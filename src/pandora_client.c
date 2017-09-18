@@ -27,14 +27,6 @@ enum {
 
 #define DEFAULT_TIMEOUT	10	/*secondes waitting for read/write*/
 
-#include <unistd.h>
-#include <errno.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <strings.h>
-
 int sys_readn(int fd, void *vptr, int n)
 {
     int nleft, nread;
@@ -163,97 +155,15 @@ typedef struct _PandoraClient_s{
 	void*				userp;
 }PandoraClient;
 
+struct thread_args {
+	PandoraClient * client;
+	char * ip;
+	int port;
+};
+
+
 void PandoraClientTask(void* handle);
 void PandoraClientHeartBeatTask(void* handle);
-
-void* PandoraClientNew(char* ip , int port , CallBack callback , void* userp)
-{
-	if(!ip || !callback || !userp )
-	{
-		printf("Bad Parameter\n");
-		return NULL;
-	}
-
-	int ret = 0;
-
-	PandoraClient *client = (PandoraClient*)malloc(sizeof(PandoraClient));
-	if(!client)
-	{
-		printf("No Memory\n");
-		return NULL;
-	}
-
-	memset(client , 0 , sizeof(PandoraClient));
-	client->callback = callback;
-	client->userp = userp;
-
-	pthread_mutex_init(&client->cliSocketLock , NULL);
-
-	client->cliSocket = tcp_open(ip ,port);
-	if(client->cliSocket < 0)
-	{
-		printf("Connect to server failed\n");
-		free(client);
-		return NULL;
-	}
-
-	ret = pthread_create(&client->receiveTask , NULL , (void*)PandoraClientTask , (void*)client );
-	if(ret != 0)
-	{
-		printf("Create Task Failed\n");
-		free(client);
-		return NULL;
-	}
-
-	ret = pthread_create(&client->heartBeatTask , NULL , (void*)PandoraClientHeartBeatTask , (void*)client );
-	if(ret != 0)
-	{
-		printf("Create heart beat Task Failed\n");
-		client->exit = 1;
-		pthread_join(client->receiveTask , NULL);
-		free(client);
-		return NULL;
-	}
-	return (void*)client;
-}
-
-void PandoraCLientDestroy(void* handle)
-{
-	PandoraClient *client = (PandoraClient*)handle;
-	if(!client)
-	{
-		printf("Bad Parameter\n");
-		return;
-	}
-
-	client->exit = 0;
-	pthread_join(client->heartBeatTask , NULL);
-	pthread_join(client->receiveTask, NULL);
-	free(client);
-}
-
-void PandoraClientTask(void* handle)
-{
-	PandoraClient *client = (PandoraClient*)handle;
-	if(!client)
-	{
-		printf("Bad Parameter\n");
-		return;
-	}
-
-	while(!client->exit)
-	{
-		int ret = write(client->cliSocket , "HEARTBEAT" , strlen("HEARTBEAT"));
-		if(ret < 0)
-		{
-			printf("Write Error\n");
-			break;
-		}
-		sleep(1);
-	}
-}
-
-
 
 void parseHeader(char* header , int len , PandoraPicHeader* picHeader)
 {
@@ -290,6 +200,85 @@ void parseHeader(char* header , int len , PandoraPicHeader* picHeader)
 					(header[index + 3] & 0xff) <<  0  ;
 }
 
+void* PandoraClientNew(const char* ip , const int port , CallBack callback , void* userp)
+{
+	if(!ip || !callback || !userp )
+	{
+		printf("Bad Parameter\n");
+		return NULL;
+	}
+
+	int ret = 0;
+
+	PandoraClient *client = (PandoraClient*)malloc(sizeof(PandoraClient));
+	if(!client)
+	{
+		printf("No Memory\n");
+		return NULL;
+	}
+
+	memset(client , 0 , sizeof(PandoraClient));
+	client->callback = callback;
+	client->userp = userp;
+
+	pthread_mutex_init(&client->cliSocketLock , NULL);
+
+	// client->cliSocket = tcp_open(ip ,port);
+	// if(client->cliSocket < 0)
+	// {
+	// 	printf("Connect to server failed\n");
+	// 	free(client);
+	// 	return NULL;
+	// }
+
+	while((client->cliSocket = tcp_open(ip, port)) < 0) {
+		printf("Connect to server failed, retry after 5 seconds!\n");
+		sleep(5);
+	}
+
+	printf("Connect to server successfully!\n");
+
+	struct thread_args args;
+	args.client = client;
+	args.ip = ip;
+	// memcpy(args.ip, ip, strlen(ip));
+	args.port = port;
+
+	ret = pthread_create(&client->receiveTask , NULL , (void*)PandoraClientTask , (void*)&args );
+	if(ret != 0)
+	{
+		printf("Create Task Failed\n");
+		free(client);
+		return NULL;
+	}
+
+	ret = pthread_create(&client->heartBeatTask , NULL , (void*)PandoraClientHeartBeatTask , (void*)client );
+	if(ret != 0)
+	{
+		printf("Create heart beat Task Failed\n");
+		client->exit = 1;
+		pthread_join(client->receiveTask , NULL);
+		free(client);
+		return NULL;
+	}
+	return (void*)client;
+}
+
+void PandoraCLientDestroy(void* handle)
+{
+	PandoraClient *client = (PandoraClient*)handle;
+	if(!client)
+	{
+		printf("Bad Parameter\n");
+		return;
+	}
+
+	client->exit = 0;
+	pthread_join(client->heartBeatTask , NULL);
+	pthread_join(client->receiveTask, NULL);
+	free(client);
+}
+
 void PandoraClientHeartBeatTask(void* handle)
 {
 	PandoraClient *client = (PandoraClient*)handle;
@@ -298,12 +287,36 @@ void PandoraClientHeartBeatTask(void* handle)
 		printf("Bad Parameter\n");
 		return;
 	}
-	int connfd = client->cliSocket;
+
+	while(!client->exit)
+	{
+		int ret = write(client->cliSocket , "HEARTBEAT" , strlen("HEARTBEAT"));
+		if(ret < 0)
+		{
+			printf("Write Heartbeat Error\n");
+			// close(client->cliSocket);
+			// break;
+		}
+		sleep(1);
+	}
+}
+
+void PandoraClientTask(void* handle)
+{
+	struct thread_args *args = handle;
+
+	PandoraClient *client = (PandoraClient*)args->client;
+	if(!client)
+	{
+		printf("Bad Parameter\n");
+		return;
+	}
+	// int connfd = client->cliSocket;
 
 	while(!client->exit)
 	{
 		int ret = 0;
-		ret = select_fd(connfd, 1, WAIT_FOR_READ);
+		ret = select_fd(client->cliSocket, 1, WAIT_FOR_READ);
 		if(ret == 0)
 		{
 			printf("No Data\n");
@@ -312,7 +325,7 @@ void PandoraClientHeartBeatTask(void* handle)
 		else if(ret > 0)
 		{
 			char header[64];
-			int n = sys_readn(connfd , header , 2);
+			int n = sys_readn(client->cliSocket , header , 2);
 			if(header[0] != 0x47 || header[1] != 0x74)
 			{
 				printf("InValid Header SOP\n");
@@ -321,7 +334,7 @@ void PandoraClientHeartBeatTask(void* handle)
 				continue;
 			}
 
-			n = sys_readn(connfd , header + 2 , PANDORA_CLIENT_HEADER_SIZE - 2);
+			n = sys_readn(client->cliSocket , header + 2 , PANDORA_CLIENT_HEADER_SIZE - 2);
 
 			PandoraPic* pic = (PandoraPic*)malloc(sizeof(PandoraPic));
 			if(!pic)
@@ -340,13 +353,13 @@ void PandoraClientHeartBeatTask(void* handle)
 				continue;
 			}
 
-			n = sys_readn(connfd , pic->yuv , pic->header.len);
-			if(n != pic->header.len)
+			n = sys_readn(client->cliSocket , pic->yuv , pic->header.len);
+			if(n != (int)pic->header.len)
 			{
 				printf("Read Error\n");
 				free(pic->yuv);
 				free(pic);
-				continue;
+				exit(0);
 			}
 
 			if(client->callback)
@@ -354,8 +367,15 @@ void PandoraClientHeartBeatTask(void* handle)
 		}
 		else
 		{
-			printf("Read Error\n");
-			break;
+			printf("Read Error, reconnecting...\n");
+			// break;
+			close(client->cliSocket);
+			printf("Connect to server failed, retrying...!\n");
+			while((client->cliSocket = tcp_open(args->ip, args->port)) < 0) {
+				printf("Connect to server failed, retrying...!\n");
+			}
 		}
 	}
 }
+
+
