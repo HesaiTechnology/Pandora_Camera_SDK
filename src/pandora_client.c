@@ -37,12 +37,14 @@ enum {
 
 int sys_readn(int fd, void *vptr, int n)
 {
+		// printf("start sys_readn: %d....\n", n);
     int nleft, nread;
     char *ptr;
 
     ptr = vptr;
     nleft = n;
     while (nleft > 0) {
+				// printf("start read\n");
         if ((nread = read(fd, ptr, nleft)) < 0) {
             if (errno == EINTR)
                 nread = 0;
@@ -51,11 +53,12 @@ int sys_readn(int fd, void *vptr, int n)
         }
         else if (nread == 0)
             break;
-
+				// printf("end read, read: %d\n", nread);
         nleft -= nread;
         ptr += nread;
     }
-
+		// printf("stop sys_readn....\n");
+		
     return n - nleft;
 }
 
@@ -158,6 +161,8 @@ typedef struct _PandoraClient_s{
 	pthread_t 			heartBeatTask;
 
 	int 				exit;
+	char * ip;
+	int port;
 
 	CallBack 			callback;
 	void*				userp;
@@ -165,7 +170,40 @@ typedef struct _PandoraClient_s{
 
 void PandoraClientTask(void* handle);
 void PandoraClientHeartBeatTask(void* handle);
+void parseHeader(char* header , int len , PandoraPicHeader* picHeader)
+{
+	int index = 0;
+	picHeader->SOP[0] = header[index];
+	picHeader->SOP[1] = header[index +1];
+	index += 2;
 
+	picHeader->pic_id = header[index];
+	picHeader->type = header[index+1];
+	index += 2;
+
+	picHeader->width = (header[index + 0] & 0xff) << 24 | \
+					(header[index + 1] & 0xff) <<  16  | \
+					(header[index + 2] & 0xff) <<  8  | \
+					(header[index + 3] & 0xff) <<  0  ;
+	index += 4;
+
+	picHeader->height = (header[index + 0] & 0xff) << 24 | \
+					(header[index + 1] & 0xff) <<  16  | \
+					(header[index + 2] & 0xff) <<  8  | \
+					(header[index + 3] & 0xff) <<  0  ;
+	index += 4;
+
+	picHeader->timestamp = (header[index + 0] & 0xff) << 24 | \
+					(header[index + 1] & 0xff) <<  16  | \
+					(header[index + 2] & 0xff) <<  8  | \
+					(header[index + 3] & 0xff) <<  0  ;
+	index += 4;
+
+	picHeader->len = (header[index + 0] & 0xff) << 24 | \
+					(header[index + 1] & 0xff) <<  16  | \
+					(header[index + 2] & 0xff) <<  8  | \
+					(header[index + 3] & 0xff) <<  0  ;
+}
 void* PandoraClientNew(char* ip , int port , CallBack callback , void* userp)
 {
 	if(!ip || !callback || !userp )
@@ -186,16 +224,11 @@ void* PandoraClientNew(char* ip , int port , CallBack callback , void* userp)
 	memset(client , 0 , sizeof(PandoraClient));
 	client->callback = callback;
 	client->userp = userp;
-
+	client->cliSocket = -1;
+	client->ip = strdup(ip);
+	client->port = port;
+	
 	pthread_mutex_init(&client->cliSocketLock , NULL);
-
-	client->cliSocket = tcp_open(ip ,port);
-	if(client->cliSocket < 0)
-	{
-		printf("Connect to server failed\n");
-		free(client);
-		return NULL;
-	}
 
 	ret = pthread_create(&client->receiveTask , NULL , (void*)PandoraClientTask , (void*)client );
 	if(ret != 0)
@@ -232,6 +265,38 @@ void PandoraCLientDestroy(void* handle)
 	free(client);
 }
 
+void PandoraClientHeartBeatTask(void* handle)
+{
+	PandoraClient *client = (PandoraClient*)handle;
+	if(!client)
+	{
+		printf("Bad Parameter\n");
+		return;
+	}
+	int ret = 0;
+	
+	while(!client->exit)
+	{
+		ret = select_fd(client->cliSocket, 1, WAIT_FOR_WRITE);
+		if (ret > 0)
+		{
+			ret = write(client->cliSocket , "HEARTBEAT" , strlen("HEARTBEAT"));
+			if(ret < 0)
+			{
+				printf("Write Error\n");
+			}
+
+		}
+		else{
+			printf("select for write wrong\n");
+		}
+
+		sleep(1);
+	}
+}
+
+
+
 void PandoraClientTask(void* handle)
 {
 	PandoraClient *client = (PandoraClient*)handle;
@@ -241,78 +306,56 @@ void PandoraClientTask(void* handle)
 		return;
 	}
 
-	while(!client->exit)
-	{
-		int ret = write(client->cliSocket , "HEARTBEAT" , strlen("HEARTBEAT"));
-		if(ret < 0)
-		{
-			printf("Write Error\n");
-			break;
-		}
-		sleep(1);
-	}
-}
-
-
-
-void parseHeader(char* header , int len , PandoraPicHeader* picHeader)
-{
-	int index = 0;
-	picHeader->SOP[0] = header[index];
-	picHeader->SOP[1] = header[index +1];
-	index += 2;
-
-	picHeader->pic_id = header[index];
-	picHeader->type = header[index+1];
-	index += 2;
-
-	picHeader->width = (header[index + 0] & 0xff) << 24 | \
-					(header[index + 1] & 0xff) <<  16  | \
-					(header[index + 2] & 0xff) <<  8  | \
-					(header[index + 3] & 0xff) <<  0  ;
-	index += 4;
-
-	picHeader->height = (header[index + 0] & 0xff) << 24 | \
-					(header[index + 1] & 0xff) <<  16  | \
-					(header[index + 2] & 0xff) <<  8  | \
-					(header[index + 3] & 0xff) <<  0  ;
-	index += 4;
-
-	picHeader->timestamp = (header[index + 0] & 0xff) << 24 | \
-					(header[index + 1] & 0xff) <<  16  | \
-					(header[index + 2] & 0xff) <<  8  | \
-					(header[index + 3] & 0xff) <<  0  ;
-	index += 4;
-
-	picHeader->len = (header[index + 0] & 0xff) << 24 | \
-					(header[index + 1] & 0xff) <<  16  | \
-					(header[index + 2] & 0xff) <<  8  | \
-					(header[index + 3] & 0xff) <<  0  ;
-}
-
-void PandoraClientHeartBeatTask(void* handle)
-{
-	PandoraClient *client = (PandoraClient*)handle;
-	if(!client)
-	{
-		printf("Bad Parameter\n");
-		return;
-	}
 	int connfd = client->cliSocket;
 
 	while(!client->exit)
 	{
+		if (client->cliSocket == -1) {
+			printf("connecting......\n");
+			connfd = tcp_open(client->ip ,client->port);
+			if(connfd < 0)
+			{
+				printf("Connect to server failed\n");
+				continue;
+			}
+			pthread_mutex_lock(&client->cliSocketLock);
+            client->cliSocket = connfd;
+			pthread_mutex_unlock(&client->cliSocketLock);
+			printf("connect to server successfully!\n");
+			struct timeval tv;
+			tv.tv_sec = 5;  /* 5 Secs Timeout */
+			tv.tv_usec = 0;  // Not init'ing this can cause strange errors
+			setsockopt(client->cliSocket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv,sizeof(struct timeval));
+			connfd = client->cliSocket;
+		}
+
+
 		int ret = 0;
+		// printf("start select_fd for read\n");
 		ret = select_fd(connfd, 1, WAIT_FOR_READ);
 		if(ret == 0)
 		{
-			printf("No Data\n");
+			printf("select for read wrong\n");
+			pthread_mutex_lock(&client->cliSocketLock);
+			close(client->cliSocket);
+			client->cliSocket = -1;
+			pthread_mutex_unlock(&client->cliSocketLock);
 			continue;
 		}
 		else if(ret > 0)
 		{
 			char header[64];
 			int n = sys_readn(connfd , header , 2);
+			if (n < 0)
+			{
+				printf("read header wrong!\n");
+				pthread_mutex_lock(&client->cliSocketLock);
+				close(client->cliSocket);
+				client->cliSocket = -1;
+				pthread_mutex_unlock(&client->cliSocketLock);
+				continue;
+			}
+
 			if(header[0] != 0x47 || header[1] != 0x74)
 			{
 				printf("InValid Header SOP\n");
@@ -322,7 +365,15 @@ void PandoraClientHeartBeatTask(void* handle)
 			}
 
 			n = sys_readn(connfd , header + 2 , PANDORA_CLIENT_HEADER_SIZE - 2);
-
+			if (n < 0)
+			{
+				printf("read header2 wrong!\n");				
+				pthread_mutex_lock(&client->cliSocketLock);
+				close(client->cliSocket);
+				client->cliSocket = -1;
+				pthread_mutex_unlock(&client->cliSocketLock);
+				continue;
+			}
 			PandoraPic* pic = (PandoraPic*)malloc(sizeof(PandoraPic));
 			if(!pic)
 			{
@@ -341,9 +392,18 @@ void PandoraClientHeartBeatTask(void* handle)
 			}
 
 			n = sys_readn(connfd , pic->yuv , pic->header.len);
+			if (n < 0)
+			{
+				printf("read pic_yuv wrong!\n");
+				pthread_mutex_lock(&client->cliSocketLock);
+				close(client->cliSocket);
+				client->cliSocket = -1;
+				pthread_mutex_unlock(&client->cliSocketLock);
+				continue;
+			}
 			if(n != pic->header.len)
 			{
-				printf("Read Error\n");
+				printf("picLength wrong\n");
 				free(pic->yuv);
 				free(pic);
 				continue;
@@ -355,7 +415,11 @@ void PandoraClientHeartBeatTask(void* handle)
 		else
 		{
 			printf("Read Error\n");
-			break;
+			pthread_mutex_lock(&client->cliSocketLock);
+			close(client->cliSocket);
+			client->cliSocket = -1;
+			pthread_mutex_unlock(&client->cliSocketLock);
+			continue;
 		}
 	}
 }
