@@ -225,7 +225,7 @@ void* PandoraClientNew(char* ip , int port , CallBack callback , void* userp)
 	client->callback = callback;
 	client->userp = userp;
 	client->cliSocket = -1;
-	client->ip = ip;
+	client->ip = strdup(ip);
 	client->port = port;
 	
 	pthread_mutex_init(&client->cliSocketLock , NULL);
@@ -312,21 +312,18 @@ void PandoraClientTask(void* handle)
 	{
 		if (client->cliSocket == -1) {
 			printf("connecting......\n");
-			pthread_mutex_lock(&client->cliSocketLock);
-			client->cliSocket = tcp_open(client->ip ,client->port);
-			pthread_mutex_unlock(&client->cliSocketLock);
-			if(client->cliSocket < 0)
+			connfd = tcp_open(client->ip ,client->port);
+			if(connfd < 0)
 			{
 				printf("Connect to server failed\n");
-				pthread_mutex_lock(&client->cliSocketLock);
-				close(client->cliSocket);
-				client->cliSocket = -1;
-				pthread_mutex_unlock(&client->cliSocketLock);
 				continue;
 			}
+			pthread_mutex_lock(&client->cliSocketLock);
+            client->cliSocket = connfd;
+			pthread_mutex_unlock(&client->cliSocketLock);
 			printf("connect to server successfully!\n");
 			struct timeval tv;
-			tv.tv_sec = 5;  /* 60 Secs Timeout */
+			tv.tv_sec = 5;  /* 5 Secs Timeout */
 			tv.tv_usec = 0;  // Not init'ing this can cause strange errors
 			setsockopt(client->cliSocket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv,sizeof(struct timeval));
 			connfd = client->cliSocket;
