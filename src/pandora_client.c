@@ -204,7 +204,7 @@ void parseHeader(char* header , int len , PandoraPicHeader* picHeader)
 					(header[index + 2] & 0xff) <<  8  | \
 					(header[index + 3] & 0xff) <<  0  ;
 }
-void* PandoraClientNew(char* ip , int port , CallBack callback , void* userp)
+void* PandoraClientNew(const char* ip , int port , CallBack callback , void* userp)
 {
 	if(!ip || !callback || !userp )
 	{
