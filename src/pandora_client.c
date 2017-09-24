@@ -316,6 +316,7 @@ void PandoraClientTask(void* handle)
 			if(connfd < 0)
 			{
 				printf("Connect to server failed\n");
+				sleep(1);
 				continue;
 			}
 			pthread_mutex_lock(&client->cliSocketLock);
