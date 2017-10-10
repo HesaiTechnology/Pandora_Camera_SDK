@@ -341,6 +341,7 @@ void PandoraClientTask(void* handle)
 			close(client->cliSocket);
 			client->cliSocket = -1;
 			pthread_mutex_unlock(&client->cliSocketLock);
+			sleep(5);
 			continue;
 		}
 		else if(ret > 0)
@@ -366,7 +367,7 @@ void PandoraClientTask(void* handle)
 			}
 
 			n = sys_readn(connfd , header + 2 , PANDORA_CLIENT_HEADER_SIZE - 2);
-			if (n < 0)
+			if (n <= 0)
 			{
 				printf("read header2 wrong!\n");				
 				pthread_mutex_lock(&client->cliSocketLock);
@@ -393,7 +394,7 @@ void PandoraClientTask(void* handle)
 			}
 
 			n = sys_readn(connfd , pic->yuv , pic->header.len);
-			if (n < 0)
+			if (n <= 0)
 			{
 				printf("read pic_yuv wrong!\n");
 				pthread_mutex_lock(&client->cliSocketLock);
