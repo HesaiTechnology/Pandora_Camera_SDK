@@ -13,8 +13,8 @@ typedef struct _PandoraPicHeader_s{
 	unsigned char type;
 	unsigned int width;
 	unsigned int height;
-	unsigned timestamp;
-	unsigned len;
+	unsigned int timestamp;
+	unsigned int len;
 }PandoraPicHeader;
 
 typedef struct _PandoraPic{
