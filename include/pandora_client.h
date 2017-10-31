@@ -6,6 +6,7 @@ extern "C"
 {
 #endif
 
+#define PANDORA_CAMERA_UNIT (5)
 
 typedef struct _PandoraPicHeader_s{
 	char SOP[2];
@@ -15,6 +16,8 @@ typedef struct _PandoraPicHeader_s{
 	unsigned int height;
 	unsigned timestamp;
 	unsigned len;
+	unsigned int totalLen;
+	unsigned int position;
 }PandoraPicHeader;
 
 typedef struct _PandoraPic{
@@ -22,7 +25,7 @@ typedef struct _PandoraPic{
 	void* yuv;
 }PandoraPic;
 
-#define PANDORA_CLIENT_HEADER_SIZE (20)
+#define PANDORA_CLIENT_HEADER_SIZE (28)
 
 typedef int (*CallBack)(void* handle , int cmd , void* param , void* userp);
 

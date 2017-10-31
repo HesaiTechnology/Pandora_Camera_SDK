@@ -18,7 +18,8 @@ int callback(void* handle , int cmd , void* param , void* userp)
 	printf("%d \n", (int)userp);
 	PandoraPic *pic = (PandoraPic*)param;
 
-	printf("OK , There is a picture , %d\n" , pic->header.len);
+	printf("frame[%d] pos: %d and %d of %d time :%d \n", pic->header.pic_id , pic->header.position ,pic->header.len , pic->header.totalLen , pic->header.timestamp);
+	// printf("OK , There is a picture , %d\n" , pic->header.len);
 
 	free(pic->yuv);
 	free(pic);
