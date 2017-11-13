@@ -473,10 +473,10 @@ void PandoraClientTask(void* handle)
 				// a whole frame
 				if(client->callback)
 					client->callback(client , 0 , client->pics[pic->header.pic_id] , client->userp);
-				printf("camera[%d] write cost : %d-%d=%d us size %d \n", 
-					pic->header.pic_id ,pic->header.timestamp,client->startTimestamp[pic->header.pic_id] ,
-					 pic->header.timestamp - client->startTimestamp[pic->header.pic_id]
-					 , pic->header.len);
+				// printf("camera[%d] write cost : %d-%d=%d us size %d \n", 
+				// 	pic->header.pic_id ,pic->header.timestamp,client->startTimestamp[pic->header.pic_id] ,
+				// 	 pic->header.timestamp - client->startTimestamp[pic->header.pic_id]
+				// 	 , pic->header.len);
 				client->pics[pic->header.pic_id] = NULL;
 				client->position[pic->header.pic_id] = 0;
 			}
