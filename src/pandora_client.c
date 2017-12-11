@@ -276,9 +276,10 @@ void PandoraCLientDestroy(void* handle)
 		return;
 	}
 
-	client->exit = 0;
+	client->exit = 1;
 	pthread_join(client->heartBeatTask , NULL);
 	pthread_join(client->receiveTask, NULL);
+	close(client->cliSocket);
 	free(client);
 }
 
