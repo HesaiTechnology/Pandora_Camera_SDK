@@ -3,7 +3,10 @@
 #include <pthread.h>
 #include <signal.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include "pandora_client.h"
+
+int imgCounter = 0;
 
 int callback(void* handle , int cmd , void* param , void* userp)
 {
@@ -13,14 +16,19 @@ int callback(void* handle , int cmd , void* param , void* userp)
 		return -1;
 	}
 
-
-
-	printf("%d \n", (int)userp);
 	PandoraPic *pic = (PandoraPic*)param;
 
-	printf("frame[%d] pos: %d and %d of %d time :%d \n", pic->header.pic_id , pic->header.position ,pic->header.len , pic->header.totalLen , pic->header.timestamp);
-	// printf("OK , There is a picture , %d\n" , pic->header.len);
-
+	if(pic->header.pic_id != 0)
+	{
+		// printf("frame[%d] pos: %d and %d of %d time :%d \n", pic->header.pic_id , pic->header.position ,pic->header.len , pic->header.totalLen , pic->header.timestamp);
+		// printf("OK , There is a picture , %d\n" , pic->header.len);
+		char filename[256];
+		sprintf(filename, "%d.jpg", ++imgCounter);
+		int fd = open(filename, O_RDWR | O_CREAT, 0666);
+		// printf("tail: %02x\n", (char)((char*)pic->yuv)[pic->header.len - 1]);
+		write(fd , pic->yuv, pic->header.len );
+		close(fd);
+	}
 	free(pic->yuv);
 	free(pic);
 }

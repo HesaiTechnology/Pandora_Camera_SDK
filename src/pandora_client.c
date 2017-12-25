@@ -434,7 +434,7 @@ void PandoraClientTask(void* handle)
 			{
 				free(pic->yuv);
 				free(pic);
-				printf("Camera %d drop \n" , pic->header.pic_id);
+				// printf("Camera %d drop \n" , pic->header.pic_id);
 				continue;
 			}
 
@@ -444,7 +444,7 @@ void PandoraClientTask(void* handle)
 				client->position[pic->header.pic_id] = 0;
 				free(pic->yuv);
 				free(pic);
-				printf("Camera %d drop \n" , pic->header.pic_id);
+				// printf("Camera %d drop \n" , pic->header.pic_id);
 				continue;
 			}
 
