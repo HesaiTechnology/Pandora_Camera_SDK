@@ -30,7 +30,7 @@ typedef struct _PandoraPic{
 typedef int (*CallBack)(void* handle , int cmd , void* param , void* userp);
 
 void* PandoraClientNew(const char* ip , int port , CallBack callback , void* userp);
-void PandoraCLientDestroy(void* handle);
+void PandoraClientDestroy(void* handle);
 
 
 

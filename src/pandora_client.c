@@ -267,7 +267,7 @@ void* PandoraClientNew(const char* ip , int port , CallBack callback , void* use
 	return (void*)client;
 }
 
-void PandoraCLientDestroy(void* handle)
+void PandoraClientDestroy(void* handle)
 {
 	PandoraClient *client = (PandoraClient*)handle;
 	if(!client)
