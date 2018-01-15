@@ -267,7 +267,7 @@ void* PandoraClientNew(const char* ip , int port , CallBack callback , void* use
 	return (void*)client;
 }
 
-void PandoraCLientDestroy(void* handle)
+void PandoraClientDestroy(void* handle)
 {
 	PandoraClient *client = (PandoraClient*)handle;
 	if(!client)
@@ -276,9 +276,10 @@ void PandoraCLientDestroy(void* handle)
 		return;
 	}
 
-	client->exit = 0;
+	client->exit = 1;
 	pthread_join(client->heartBeatTask , NULL);
 	pthread_join(client->receiveTask, NULL);
+	close(client->cliSocket);
 	free(client);
 }
 
@@ -433,7 +434,7 @@ void PandoraClientTask(void* handle)
 			{
 				free(pic->yuv);
 				free(pic);
-				printf("Camera %d drop \n" , pic->header.pic_id);
+				// printf("Camera %d drop \n" , pic->header.pic_id);
 				continue;
 			}
 
@@ -443,7 +444,7 @@ void PandoraClientTask(void* handle)
 				client->position[pic->header.pic_id] = 0;
 				free(pic->yuv);
 				free(pic);
-				printf("Camera %d drop \n" , pic->header.pic_id);
+				// printf("Camera %d drop \n" , pic->header.pic_id);
 				continue;
 			}
 
