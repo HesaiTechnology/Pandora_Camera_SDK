@@ -220,6 +220,15 @@ void parseHeader(char* header , int len , PandoraPicHeader* picHeader)
 					(header[index + 1] & 0xff) <<  16  | \
 					(header[index + 2] & 0xff) <<  8  | \
 					(header[index + 3] & 0xff) <<  0  ;
+	#ifdef UTC_TIME
+	index+=4;
+	picHeader->UTC_Time.UTC_Year=header[index++];
+	picHeader->UTC_Time.UTC_Month=header[index++];
+	picHeader->UTC_Time.UTC_Day=header[index++];
+	picHeader->UTC_Time.UTC_Hour=header[index++];
+	picHeader->UTC_Time.UTC_Minute=header[index++];
+	picHeader->UTC_Time.UTC_Second=header[index];
+	#endif
 }
 void* PandoraClientNew(const char* ip , int port , CallBack callback , void* userp)
 {
@@ -461,6 +470,7 @@ void PandoraClientTask(void* handle)
 			if(client->position[pic->header.pic_id] == 0)
 			{
 				client->startTimestamp[pic->header.pic_id] = pic->header.timestamp;
+												
 			}
 
 			client->position[pic->header.pic_id] += pic->header.len;
@@ -471,6 +481,7 @@ void PandoraClientTask(void* handle)
 			{
 				client->pics[pic->header.pic_id]->header.len = pic->header.totalLen;
 				client->pics[pic->header.pic_id]->header.timestamp = pic->header.timestamp;
+				client->pics[pic->header.pic_id]->header.UTC_Time = pic->header.UTC_Time;
 				// a whole frame
 				if(client->callback)
 					client->callback(client , 0 , client->pics[pic->header.pic_id] , client->userp);
@@ -483,7 +494,7 @@ void PandoraClientTask(void* handle)
 			}
 			free(pic->yuv);
 			free(pic);
-			
+		
 		}
 		else
 		{
