@@ -17,18 +17,30 @@ int callback(void* handle , int cmd , void* param , void* userp)
 	}
 
 	PandoraPic *pic = (PandoraPic*)param;
+       printf("frame[%d] pos: Y:%d M:%d D:%d H:%d M:%d S:%d usec: %d \n", 
+       pic->header.pic_id,
+       pic->header.UTC_Time.UTC_Year , 
+       pic->header.UTC_Time.UTC_Month ,
+       pic->header.UTC_Time.UTC_Day , 
+       pic->header.UTC_Time.UTC_Hour , 
+       pic->header.UTC_Time.UTC_Minute , 
+       pic->header.UTC_Time.UTC_Second , 
+       pic->header.timestamp);
 
-	if(pic->header.pic_id != 0)
-	{
-		// printf("frame[%d] pos: %d and %d of %d time :%d \n", pic->header.pic_id , pic->header.position ,pic->header.len , pic->header.totalLen , pic->header.timestamp);
-		// printf("OK , There is a picture , %d\n" , pic->header.len);
-		char filename[256];
-		sprintf(filename, "%d.jpg", ++imgCounter);
-		int fd = open(filename, O_RDWR | O_CREAT, 0666);
-		// printf("tail: %02x\n", (char)((char*)pic->yuv)[pic->header.len - 1]);
-		write(fd , pic->yuv, pic->header.len );
-		close(fd);
-	}
+
+       // if(pic->header.pic_id != 0)
+       // {
+       //      // printf("frame[%d] pos: %d and %d of %d time :%d \n", pic->header.pic_id , pic->header.position ,pic->header.len , pic->header.totalLen , pic->header.timestamp);
+       //      // printf("OK , There is a picture , %d\n" , pic->header.len);
+       //      char filename[256];
+       //      sprintf(filename, "%d.jpg", ++imgCounter);
+       //      int fd = open(filename, O_RDWR | O_CREAT, 0666);
+       //      // printf("tail: %02x\n", (char)((char*)pic->yuv)[pic->header.len - 1]);
+       //      write(fd , pic->yuv, pic->header.len );
+       //      close(fd);
+       // }
+
+	
 	free(pic->yuv);
 	free(pic);
 }
