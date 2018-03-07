@@ -16,7 +16,7 @@ include_directories(
 	include
 )
 
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g" )
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC" )
 
 
 
