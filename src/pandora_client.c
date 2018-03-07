@@ -314,9 +314,6 @@ void PandoraClientHeartBeatTask(void* handle)
 			}
 
 		}
-		else{
-			printf("select for write wrong\n");
-		}
 
 		sleep(1);
 	}
@@ -338,7 +335,7 @@ void PandoraClientTask(void* handle)
 	while(!client->exit)
 	{
 		if (client->cliSocket == -1) {
-			printf("connecting......\n");
+			printf("Camera: Connecting......\n");
 			connfd = tcp_open(client->ip ,client->port);
 			if(connfd < 0)
 			{
@@ -349,7 +346,7 @@ void PandoraClientTask(void* handle)
 			pthread_mutex_lock(&client->cliSocketLock);
             client->cliSocket = connfd;
 			pthread_mutex_unlock(&client->cliSocketLock);
-			printf("connect to server successfully!\n");
+			printf("Camera: connect to server successfully!\n");
 			struct timeval tv;
 			tv.tv_sec = 5;  /* 5 Secs Timeout */
 			tv.tv_usec = 0;  // Not init'ing this can cause strange errors
