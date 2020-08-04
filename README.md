@@ -1,4 +1,4 @@
-# PandoraCameraClient
+# Pandora_Camera_SDK
 ### Build
 ```
 cd <source dir>
